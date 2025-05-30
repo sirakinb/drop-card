@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,19 +7,52 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  Alert,
+  Alert, // Keep Alert for other potential alerts, though saveCard handles its own
 } from 'react-native';
+// AsyncStorage import removed
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { useCard } from '../context/CardContext'; // Import useCard
 
-export default function CreateCardScreen({ navigation }) {
+export default function CreateCardScreen({ navigation, route }) { // Added route
+  const { cardData: contextCardData, saveCard, isLoading: isContextLoading } = useCard();
+
   const [formData, setFormData] = useState({
-    name: 'John Doe',
-    title: 'Product Designer',
-    company: 'Company Name',
-    email: 'your@email.com',
+    name: '',
+    title: '',
+    company: '',
+    email: '',
   });
   const [profileImage, setProfileImage] = useState(null);
+
+  useEffect(() => {
+    // Pre-fill form if editing data is passed via route params,
+    // otherwise, if card data exists in context, use that.
+    const initialData = route.params?.cardData;
+    const initialImage = route.params?.profileImage;
+
+    if (initialData) {
+      setFormData(initialData);
+    } else if (contextCardData?.formData) {
+      setFormData(contextCardData.formData);
+    } else {
+      // Default placeholder if nothing to prefill
+      setFormData({
+        name: 'John Doe',
+        title: 'Product Designer',
+        company: 'Company Name',
+        email: 'your@email.com',
+      });
+    }
+
+    if (initialImage) {
+      setProfileImage(initialImage);
+    } else if (contextCardData?.profileImage) {
+      setProfileImage(contextCardData.profileImage);
+    } else {
+      setProfileImage(null);
+    }
+  }, [route.params, contextCardData]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -29,15 +62,20 @@ export default function CreateCardScreen({ navigation }) {
   };
 
   const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    });
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
 
-    if (!result.canceled) {
-      setProfileImage(result.assets[0].uri);
+      if (!result.canceled) {
+        setProfileImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error("ImagePicker Error: ", error);
+      Alert.alert("Image Picker Error", "Could not pick image. Please check permissions or try again.");
     }
   };
 
@@ -48,12 +86,39 @@ export default function CreateCardScreen({ navigation }) {
     });
   };
 
-  const handleSave = () => {
-    Alert.alert('Success', 'Card saved successfully!');
-    navigation.navigate('Main', { 
-      screen: 'Cards',
-      params: { cardData: formData, profileImage }
-    });
+  const handleSave = async () => {
+    // Input Validation
+    if (!formData.name.trim()) {
+      Alert.alert('Validation Error', 'Name is required');
+      return;
+    }
+    if (!formData.email.trim()) {
+      Alert.alert('Validation Error', 'Email is required');
+      return;
+    }
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!emailRegex.test(formData.email)) {
+      Alert.alert('Validation Error', 'Invalid email format');
+      return;
+    }
+
+    const cardDataToSave = {
+      formData,
+      profileImage,
+    };
+
+    await saveCard(cardDataToSave); // saveCard from context handles alerts
+
+    // saveCard is async, but we might not need to wait for navigation
+    // if saveCard handles its own loading state and feedback.
+    // The context's saveCard already shows an alert.
+    if (!isContextLoading) { // Check if context is not loading to prevent navigating away too early
+        navigation.navigate('Main', { 
+          screen: 'Cards',
+        });
+    }
+    // If saveCard was successful, navigation will occur.
+    // If it failed, an alert would have been shown by saveCard.
   };
 
   return (

@@ -17,6 +17,11 @@ import ShareScreen from './src/screens/ShareScreen';
 import ScanScreen from './src/screens/ScanScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 
+// Import CardProvider
+import { CardProvider } from './src/context/CardContext';
+// Import ContactProvider
+import { ContactProvider } from './src/context/ContactContext';
+
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
 
@@ -112,9 +117,13 @@ export default function App() {
 
   // Show main app after onboarding
   return (
-    <NavigationContainer>
-      <StatusBar style="dark" />
-      <MainTabs />
-    </NavigationContainer>
+    <CardProvider>
+      <ContactProvider>
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <MainTabs />
+        </NavigationContainer>
+      </ContactProvider>
+    </CardProvider>
   );
 }

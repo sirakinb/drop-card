@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react'; // useState, Alert, AsyncStorage removed
 import {
   View,
   Text,
@@ -6,19 +6,34 @@ import {
   StyleSheet,
   SafeAreaView,
   Image,
+  ActivityIndicator,
+  // Alert removed as context handles it
 } from 'react-native';
+// AsyncStorage import removed
 import { Ionicons } from '@expo/vector-icons';
+import { useCard } from '../context/CardContext'; // Import useCard
+import { useIsFocused } from '@react-navigation/native'; // Import useIsFocused
 
-export default function CardPreviewScreen({ navigation, route }) {
-  const cardData = route?.params?.cardData || {
-    name: 'John Doe',
-    title: 'Product Designer',
-    company: 'Company Name',
-    email: 'your@email.com',
-  };
+export default function CardPreviewScreen({ navigation }) {
+  const { cardData, isLoading, loadCard } = useCard(); // Use context
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    // Load data from context when the screen comes into focus
+    // The context itself handles initial load, this is for refresh on focus
+    if (isFocused) {
+      loadCard();
+    }
+  }, [isFocused, loadCard]); // Added loadCard to dependency array
 
   const handleEdit = () => {
-    navigation.navigate('CreateCard');
+    navigation.navigate('CreateCard', {
+      screen: 'CreateCard', 
+      params: {
+        cardData: cardData?.formData, 
+        profileImage: cardData?.profileImage,
+      },
+    });
   };
 
   const handlePreview = () => {
@@ -57,17 +72,34 @@ export default function CardPreviewScreen({ navigation, route }) {
             
             <View style={styles.profileSection}>
               <View style={styles.avatar}>
-                <Ionicons name="person" size={24} color="#666" />
+                {cardData?.profileImage ? (
+                  <Image source={{ uri: cardData.profileImage }} style={styles.profileImage} />
+                ) : (
+                  <Ionicons name="person" size={24} color="#666" />
+                )}
               </View>
               <View style={styles.profileInfo}>
-                <Text style={styles.name}>{cardData.name}</Text>
-                <Text style={styles.jobTitle}>{cardData.title}</Text>
+                <Text style={styles.name}>{cardData?.formData?.name || 'Name'}</Text>
+                <Text style={styles.jobTitle}>{cardData?.formData?.title || 'Title'}</Text>
               </View>
             </View>
           </View>
         </View>
 
-        <View style={styles.actionButtons}>
+        {isLoading ? (
+          <ActivityIndicator size="large" color="#0000ff" style={{marginTop: 20}} />
+        ) : !cardData ? ( // Check cardData from context
+          <View style={styles.noCardContainer}>
+            <Text style={styles.noCardText}>No card created yet.</Text>
+            <TouchableOpacity 
+              style={styles.createButton} 
+              onPress={() => navigation.navigate('CreateCard')} // Navigate to CreateCard
+            >
+              <Text style={styles.createButtonText}>Create One Now</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.actionButtons}>
           <TouchableOpacity style={styles.actionButton} onPress={handleEdit}>
             <Ionicons name="pencil" size={20} color="#000" />
             <Text style={styles.actionText}>Edit</Text>
@@ -87,11 +119,8 @@ export default function CardPreviewScreen({ navigation, route }) {
             <Ionicons name="ellipsis-horizontal" size={20} color="#000" />
             <Text style={styles.actionText}>More</Text>
           </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.saveButton}>
-          <Text style={styles.saveButtonText}>Save Changes</Text>
-        </TouchableOpacity>
+          </View>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -173,6 +202,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden', // To ensure the image respects border radius
+  },
+  profileImage: {
+    width: '100%',
+    height: '100%',
   },
   profileInfo: {
     flex: 1,
@@ -211,6 +245,26 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  noCardContainer: {
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  noCardText: {
+    fontSize: 18,
+    color: '#666',
+    marginBottom: 20,
+  },
+  createButton: {
+    backgroundColor: '#000',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 28,
+  },
+  createButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',

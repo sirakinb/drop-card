@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect } from 'react'; // useState, Alert, AsyncStorage removed
 import {
   View,
   Text,
@@ -6,28 +6,25 @@ import {
   StyleSheet,
   SafeAreaView,
   FlatList,
+  ActivityIndicator, // Added for loading state
 } from 'react-native';
+// AsyncStorage import removed. Alert might be removed if context handles all alerts.
+import { useIsFocused } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useContacts } from '../context/ContactContext'; // Import useContacts
 
 export default function ContactsScreen({ navigation }) {
-  const [contacts, setContacts] = useState([
-    {
-      id: '1',
-      name: 'Sarah Johnson',
-      email: 'sarah@company.com',
-      title: 'Marketing Manager',
-      company: 'Tech Corp',
-      notes: 'Met at conference',
-    },
-    {
-      id: '2',
-      name: 'Mike Chen',
-      email: 'mike@startup.io',
-      title: 'Software Engineer',
-      company: 'StartupCo',
-      notes: 'Potential collaboration',
-    },
-  ]);
+  const { contacts, isLoading, loadContacts: loadContactsFromContext } = useContacts(); // Use context
+  const isFocused = useIsFocused();
+
+  // Reload contacts when the screen is focused using context's loadContacts
+  useEffect(() => {
+    if (isFocused) {
+      loadContactsFromContext();
+    }
+    // The initial load is handled by the ContactProvider's own useEffect.
+    // This useEffect is primarily for refreshing when the screen comes back into focus.
+  }, [isFocused, loadContactsFromContext]);
 
   const handleAddContact = () => {
     navigation.navigate('AddContact');
@@ -49,11 +46,9 @@ export default function ContactsScreen({ navigation }) {
       </View>
       <View style={styles.contactInfo}>
         <Text style={styles.contactName}>{item.name}</Text>
-        <Text style={styles.contactTitle}>{item.title}</Text>
-        <Text style={styles.contactCompany}>{item.company}</Text>
-        {item.notes && (
-          <Text style={styles.contactNotes}>{item.notes}</Text>
-        )}
+        {item.title ? <Text style={styles.contactTitle}>{item.title}</Text> : null}
+        {item.company ? <Text style={styles.contactCompany}>{item.company}</Text> : null}
+        {item.notes ? <Text style={styles.contactNotes}>{item.notes}</Text> : null}
       </View>
       <Ionicons name="chevron-forward" size={20} color="#ccc" />
     </TouchableOpacity>
@@ -68,7 +63,9 @@ export default function ContactsScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
-      {contacts.length === 0 ? (
+      {isLoading ? (
+        <ActivityIndicator size="large" color="#0000ff" style={{ flex: 1, justifyContent: 'center' }} />
+      ) : contacts.length === 0 ? (
         <View style={styles.emptyState}>
           <Ionicons name="people-outline" size={64} color="#ccc" />
           <Text style={styles.emptyTitle}>No contacts yet</Text>
@@ -83,7 +80,7 @@ export default function ContactsScreen({ navigation }) {
         <FlatList
           data={contacts}
           renderItem={renderContact}
-          keyExtractor={(item) => item.id}
+          keyExtractor={(item) => item.id.toString()} // Ensure id is a string for keyExtractor
           style={styles.list}
           showsVerticalScrollIndicator={false}
         />

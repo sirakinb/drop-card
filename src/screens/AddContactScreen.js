@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,15 +9,33 @@ import {
   ScrollView,
   Alert,
 } from 'react-native';
+// AsyncStorage import removed
 import { Ionicons } from '@expo/vector-icons';
+import { useContacts } from '../context/ContactContext'; // Import useContacts
 
-export default function AddContactScreen({ navigation }) {
+export default function AddContactScreen({ navigation, route }) {
+  const { addContact, isLoading: isContextLoading } = useContacts(); // Use context
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    title: '',
+    company: '',
     notes: '',
   });
   const [isRecording, setIsRecording] = useState(false);
+
+  useEffect(() => {
+    if (route.params?.scannedData) {
+      const { name, email, title, company } = route.params.scannedData;
+      setFormData(prev => ({
+        ...prev,
+        name: name || prev.name,
+        email: email || prev.email,
+        title: title || prev.title,
+        company: company || prev.company,
+      }));
+    }
+  }, [route.params?.scannedData]);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -36,14 +54,30 @@ export default function AddContactScreen({ navigation }) {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name.trim()) {
-      Alert.alert('Error', 'Please enter a name');
+      Alert.alert('Validation Error', 'Please enter a name.'); // Local validation alert
       return;
     }
 
-    Alert.alert('Success', 'Contact saved successfully!');
-    navigation.goBack();
+    const newContact = {
+      id: Date.now().toString(), // Generate ID here
+      ...formData, // Spread existing form data
+    };
+
+    // Call addContact from context. It handles its own alerts for success/failure.
+    await addContact(newContact); 
+
+    // Check if context is not loading (i.e., addContact has finished)
+    // and then navigate. The alert for success/failure is handled by addContact itself.
+    // A more robust way might be for addContact to return a status or for errors to be thrown
+    // and caught here, but for now, relying on its internal alert and then navigating is okay.
+    if (!isContextLoading) { 
+        // Check navigation.canGoBack() before going back if there's any doubt.
+        if (navigation.canGoBack()) {
+            navigation.goBack();
+        }
+    }
   };
 
   return (
@@ -85,6 +119,28 @@ export default function AddContactScreen({ navigation }) {
           </View>
 
           <View style={styles.inputGroup}>
+            <Text style={styles.label}>Title</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter title (e.g., Software Engineer)"
+              value={formData.title}
+              onChangeText={(value) => handleInputChange('title', value)}
+              autoCapitalize="words"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Company</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Enter company name"
+              value={formData.company}
+              onChangeText={(value) => handleInputChange('company', value)}
+              autoCapitalize="words"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
             <Text style={styles.label}>Notes</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
@@ -112,8 +168,14 @@ export default function AddContactScreen({ navigation }) {
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-          <Text style={styles.saveButtonText}>Save Contact</Text>
+        <TouchableOpacity 
+          style={[styles.saveButton, isContextLoading && styles.saveButtonDisabled]} 
+          onPress={handleSave}
+          disabled={isContextLoading}
+        >
+          <Text style={styles.saveButtonText}>
+            {isContextLoading ? 'Saving...' : 'Save Contact'}
+          </Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -211,4 +273,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  saveButtonDisabled: {
+    backgroundColor: '#ccc', // Optional: style for disabled button
+  }
 }); 
