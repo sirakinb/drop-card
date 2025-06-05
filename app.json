@@ -16,14 +16,21 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.dropcard.app"
+      "bundleIdentifier": "com.dropcard.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app uses the camera to scan QR codes and take profile photos."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "package": "com.dropcard.app"
+      "package": "com.dropcard.app",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -35,7 +42,25 @@
           "photosPermission": "The app accesses your photos to let you share them with your business card.",
           "cameraPermission": "The app accesses your camera to let you take photos for your business card."
         }
-      ]
-    ]
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "The app needs access to your camera to scan QR codes and business cards."
+        }
+      ],
+      [
+        "expo-barcode-scanner",
+        {
+          "cameraPermission": "The app needs access to your camera to scan QR codes of business cards."
+        }
+      ],
+      "expo-dev-client"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "ac2074dd-d310-40a1-8f97-9005a3c8009f"
+      }
+    }
   }
 }

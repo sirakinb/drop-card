@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -6,77 +6,345 @@ import {
   StyleSheet,
   SafeAreaView,
   Alert,
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BarCodeScanner } from 'expo-barcode-scanner';
+import { Camera } from 'expo-camera';
+import * as Haptics from 'expo-haptics';
+import { useContacts } from '../context/AppContext';
+import { parseVCard } from '../utils/qrGenerator';
+
+const { width } = Dimensions.get('window');
+const SCAN_AREA_SIZE = width * 0.7;
 
 export default function ScanScreen({ navigation }) {
+  // States for camera and scanning
+  const [hasPermission, setHasPermission] = useState(null);
   const [isScanning, setIsScanning] = useState(false);
-
+  const [scanned, setScanned] = useState(false);
+  const [flashMode, setFlashMode] = useState(Camera.Constants.FlashMode.off);
+  const [processingQR, setProcessingQR] = useState(false);
+  
+  // Animation values
+  const scanLineAnim = useRef(new Animated.Value(0)).current;
+  const successAnim = useRef(new Animated.Value(0)).current;
+  
+  // Get contacts context for saving scanned contacts
+  const { saveContact } = useContacts();
+  
+  // Request camera permissions on component mount
+  useEffect(() => {
+    (async () => {
+      const { status } = await Camera.requestCameraPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
+  }, []);
+  
+  // Animate scan line when scanning is active
+  useEffect(() => {
+    if (isScanning && !scanned) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(scanLineAnim, {
+            toValue: 1,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scanLineAnim, {
+            toValue: 0,
+            duration: 2000,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      scanLineAnim.setValue(0);
+    }
+    
+    return () => {
+      scanLineAnim.stopAnimation();
+    };
+  }, [isScanning, scanned]);
+  
+  // Start scanning
   const handleStartScan = () => {
     setIsScanning(true);
-    // In a real app, this would start the camera and QR scanner
-    setTimeout(() => {
-      setIsScanning(false);
-      Alert.alert(
-        'Card Scanned!',
-        'Successfully scanned John Smith\'s business card. Would you like to add them to your contacts?',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { 
-            text: 'Add Contact', 
-            onPress: () => navigation.navigate('AddContact', {
-              scannedData: {
-                name: 'John Smith',
-                email: 'john@company.com',
-                title: 'Sales Manager',
-                company: 'Tech Solutions Inc.'
-              }
-            })
-          }
-        ]
-      );
-    }, 2000);
+    setScanned(false);
   };
-
+  
+  // Stop scanning
+  const handleStopScan = () => {
+    setIsScanning(false);
+    setScanned(false);
+  };
+  
+  // Toggle flash mode
+  const toggleFlash = () => {
+    setFlashMode(
+      flashMode === Camera.Constants.FlashMode.off
+        ? Camera.Constants.FlashMode.torch
+        : Camera.Constants.FlashMode.off
+    );
+  };
+  
+  // Navigate to manual entry
   const handleManualEntry = () => {
     navigation.navigate('AddContact');
   };
-
-  return (
-    <SafeAreaView style={styles.container}>
+  
+  // Handle successful scan animation
+  const animateSuccess = () => {
+    successAnim.setValue(0);
+    Animated.timing(successAnim, {
+      toValue: 1,
+      duration: 1500,
+      useNativeDriver: true,
+    }).start(() => {
+      setIsScanning(false);
+      setScanned(false);
+    });
+  };
+  
+  // Handle barcode scanning
+  const handleBarCodeScanned = async ({ type, data }) => {
+    if (scanned || processingQR) return;
+    
+    try {
+      setScanned(true);
+      setProcessingQR(true);
+      
+      // Provide haptic feedback
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      
+      // Check if this is a vCard QR code
+      if (!data.includes('BEGIN:VCARD')) {
+        Alert.alert(
+          'Invalid QR Code',
+          'This doesn\'t appear to be a business card QR code. Please try scanning a vCard QR code.',
+          [{ text: 'OK', onPress: () => {
+            setScanned(false);
+            setProcessingQR(false);
+          }}]
+        );
+        return;
+      }
+      
+      // Parse the vCard data
+      const cardData = parseVCard(data);
+      
+      if (!cardData || !cardData.name) {
+        throw new Error('Could not parse business card data');
+      }
+      
+      // Animate success
+      animateSuccess();
+      
+      // Prepare contact data
+      const contactData = {
+        cardData: cardData,
+        notes: '',
+        tags: [],
+        meetingContext: 'Scanned via QR code',
+        createdAt: new Date().toISOString(),
+      };
+      
+      // Show confirmation
+      setTimeout(() => {
+        Alert.alert(
+          'Card Scanned!',
+          `Successfully scanned ${cardData.name}'s business card. Would you like to add them to your contacts?`,
+          [
+            { 
+              text: 'Cancel', 
+              style: 'cancel',
+              onPress: () => {
+                setProcessingQR(false);
+                setScanned(false);
+              }
+            },
+            { 
+              text: 'Add Contact', 
+              onPress: async () => {
+                // Save the contact
+                const savedContact = await saveContact(contactData);
+                
+                if (savedContact) {
+                  // Navigate to contact details or back to contacts list
+                  navigation.navigate('ContactsList');
+                  setTimeout(() => {
+                    Alert.alert(
+                      'Contact Added',
+                      `${cardData.name} has been added to your contacts.`
+                    );
+                  }, 500);
+                } else {
+                  Alert.alert(
+                    'Error',
+                    'Failed to save contact. Please try again.'
+                  );
+                }
+                
+                setProcessingQR(false);
+              }
+            }
+          ]
+        );
+      }, 1500); // Delay to show success animation
+      
+    } catch (error) {
+      console.error('Error scanning QR code:', error);
+      Alert.alert(
+        'Scanning Error',
+        'There was an error processing this QR code. Please try again.',
+        [{ text: 'OK', onPress: () => {
+          setScanned(false);
+          setProcessingQR(false);
+        }}]
+      );
+    }
+  };
+  
+  // Render different screens based on permission and scanning state
+  const renderContent = () => {
+    // Loading state while checking permissions
+    if (hasPermission === null) {
+      return (
+        <View style={styles.centeredContainer}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.permissionText}>Checking camera permissions...</Text>
+        </View>
+      );
+    }
+    
+    // Permission denied state
+    if (hasPermission === false) {
+      return (
+        <View style={styles.centeredContainer}>
+          <Ionicons name="camera-off" size={64} color="#FF3B30" />
+          <Text style={styles.permissionTitle}>Camera Access Required</Text>
+          <Text style={styles.permissionText}>
+            Please allow camera access in your device settings to scan QR codes.
+          </Text>
+          <TouchableOpacity 
+            style={styles.permissionButton}
+            onPress={async () => {
+              const { status } = await Camera.requestCameraPermissionsAsync();
+              setHasPermission(status === 'granted');
+            }}
+          >
+            <Text style={styles.permissionButtonText}>Request Permission</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    
+    // Active scanning state
+    if (isScanning) {
+      return (
+        <View style={styles.cameraContainer}>
+          <Camera
+            style={styles.camera}
+            type={Camera.Constants.Type.back}
+            flashMode={flashMode}
+            onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+            barCodeScannerSettings={{
+              barCodeTypes: [BarCodeScanner.Constants.BarCodeType.qr],
+            }}
+          >
+            <SafeAreaView style={styles.cameraContent}>
+              <View style={styles.cameraHeader}>
+                <TouchableOpacity 
+                  style={styles.cameraButton}
+                  onPress={handleStopScan}
+                >
+                  <Ionicons name="close" size={24} color="#fff" />
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.cameraButton}
+                  onPress={toggleFlash}
+                >
+                  <Ionicons 
+                    name={flashMode === Camera.Constants.FlashMode.torch ? "flash" : "flash-off"} 
+                    size={24} 
+                    color="#fff" 
+                  />
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.scanAreaContainer}>
+                <View style={styles.scanArea}>
+                  {/* Scanning animation */}
+                  {!scanned && (
+                    <Animated.View 
+                      style={[
+                        styles.scanLine,
+                        {
+                          transform: [
+                            {
+                              translateY: scanLineAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, SCAN_AREA_SIZE - 2],
+                              }),
+                            },
+                          ],
+                        },
+                      ]}
+                    />
+                  )}
+                  
+                  {/* Success animation */}
+                  {scanned && (
+                    <Animated.View 
+                      style={[
+                        styles.successOverlay,
+                        {
+                          opacity: successAnim,
+                        },
+                      ]}
+                    >
+                      <Ionicons name="checkmark-circle" size={80} color="#4CD964" />
+                    </Animated.View>
+                  )}
+                </View>
+                
+                <Text style={styles.scanText}>
+                  {scanned 
+                    ? 'Processing QR code...' 
+                    : 'Position QR code within the frame'}
+                </Text>
+              </View>
+            </SafeAreaView>
+          </Camera>
+        </View>
+      );
+    }
+    
+    // Default state - not scanning yet
+    return (
       <View style={styles.content}>
         <Text style={styles.title}>Scan Card</Text>
         <Text style={styles.subtitle}>Point your camera at a QR code to scan a business card</Text>
 
         <View style={styles.scanArea}>
           <View style={styles.scanFrame}>
-            {isScanning ? (
-              <View style={styles.scanningIndicator}>
-                <Ionicons name="scan" size={64} color="#007AFF" />
-                <Text style={styles.scanningText}>Scanning...</Text>
-              </View>
-            ) : (
-              <View style={styles.scanPlaceholder}>
-                <Ionicons name="qr-code-outline" size={64} color="#ccc" />
-                <Text style={styles.placeholderText}>Tap to start scanning</Text>
-              </View>
-            )}
+            <View style={styles.scanPlaceholder}>
+              <Ionicons name="qr-code-outline" size={64} color="#ccc" />
+              <Text style={styles.placeholderText}>Tap to start scanning</Text>
+            </View>
           </View>
         </View>
 
         <TouchableOpacity 
-          style={[styles.scanButton, isScanning && styles.scanButtonActive]}
+          style={styles.scanButton}
           onPress={handleStartScan}
-          disabled={isScanning}
         >
-          <Ionicons 
-            name={isScanning ? "stop" : "camera"} 
-            size={24} 
-            color="#fff" 
-          />
-          <Text style={styles.scanButtonText}>
-            {isScanning ? 'Scanning...' : 'Start Scanning'}
-          </Text>
+          <Ionicons name="camera" size={24} color="#fff" />
+          <Text style={styles.scanButtonText}>Start Scanning</Text>
         </TouchableOpacity>
 
         <View style={styles.divider}>
@@ -97,6 +365,12 @@ export default function ScanScreen({ navigation }) {
           <Text style={styles.tipText}>• Keep QR code within the frame</Text>
         </View>
       </View>
+    );
+  };
+  
+  return (
+    <SafeAreaView style={styles.container}>
+      {renderContent()}
     </SafeAreaView>
   );
 }
@@ -138,15 +412,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#fff',
   },
-  scanningIndicator: {
-    alignItems: 'center',
-    gap: 16,
-  },
-  scanningText: {
-    fontSize: 16,
-    color: '#007AFF',
-    fontWeight: '500',
-  },
   scanPlaceholder: {
     alignItems: 'center',
     gap: 16,
@@ -165,9 +430,6 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     gap: 8,
     marginBottom: 24,
-  },
-  scanButtonActive: {
-    backgroundColor: '#ff4444',
   },
   scanButtonText: {
     color: '#fff',
@@ -222,4 +484,99 @@ const styles = StyleSheet.create({
     color: '#666',
     marginBottom: 4,
   },
-}); 
+  
+  // Camera styles
+  cameraContainer: {
+    flex: 1,
+  },
+  camera: {
+    flex: 1,
+  },
+  cameraContent: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  cameraHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 20,
+  },
+  cameraButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scanAreaContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scanArea: {
+    width: SCAN_AREA_SIZE,
+    height: SCAN_AREA_SIZE,
+    borderWidth: 2,
+    borderColor: '#fff',
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  scanLine: {
+    height: 2,
+    width: '100%',
+    backgroundColor: '#007AFF',
+  },
+  scanText: {
+    color: '#fff',
+    fontSize: 14,
+    marginTop: 20,
+    textAlign: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  successOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  
+  // Permission styles
+  centeredContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+  },
+  permissionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  permissionText: {
+    fontSize: 16,
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 16,
+    marginBottom: 24,
+  },
+  permissionButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 24,
+  },
+  permissionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+});

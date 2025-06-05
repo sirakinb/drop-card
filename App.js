@@ -5,6 +5,9 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
 
+// Import context provider
+import AppContextProvider from './src/context/AppContext';
+
 // Import all screens
 import SplashScreen from './src/screens/SplashScreen';
 import OnboardingScreen from './src/screens/OnboardingScreen';
@@ -90,31 +93,25 @@ export default function App() {
   const [isSplashComplete, setIsSplashComplete] = useState(false);
   const [isOnboardingComplete, setIsOnboardingComplete] = useState(false);
 
-  // Show splash screen first
-  if (!isSplashComplete) {
-    return (
-      <>
-        <StatusBar style="light" />
-        <SplashScreen onComplete={() => setIsSplashComplete(true)} />
-      </>
-    );
-  }
-
-  // Show onboarding after splash
-  if (!isOnboardingComplete) {
-    return (
-      <>
-        <StatusBar style="dark" />
-        <OnboardingScreen onComplete={() => setIsOnboardingComplete(true)} />
-      </>
-    );
-  }
-
-  // Show main app after onboarding
+  // Wrap the content with AppContextProvider
   return (
-    <NavigationContainer>
-      <StatusBar style="dark" />
-      <MainTabs />
-    </NavigationContainer>
+    <AppContextProvider>
+      {!isSplashComplete ? (
+        <>
+          <StatusBar style="light" />
+          <SplashScreen onComplete={() => setIsSplashComplete(true)} />
+        </>
+      ) : !isOnboardingComplete ? (
+        <>
+          <StatusBar style="dark" />
+          <OnboardingScreen onComplete={() => setIsOnboardingComplete(true)} />
+        </>
+      ) : (
+        <NavigationContainer>
+          <StatusBar style="dark" />
+          <MainTabs />
+        </NavigationContainer>
+      )}
+    </AppContextProvider>
   );
 }
