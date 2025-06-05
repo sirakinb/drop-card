@@ -10,8 +10,11 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '../lib/supabase'; // Import supabase
+import { useAuth } from '../context/AuthContext'; // Import useAuth
 
 export default function AddContactScreen({ navigation }) {
+  const { user } = useAuth(); // Get user from useAuth
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -36,14 +39,35 @@ export default function AddContactScreen({ navigation }) {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => { // Make handleSave async
     if (!formData.name.trim()) {
       Alert.alert('Error', 'Please enter a name');
       return;
     }
 
-    Alert.alert('Success', 'Contact saved successfully!');
-    navigation.goBack();
+    try {
+      const { data, error } = await supabase
+        .from('contacts')
+        .insert([
+          {
+            name: formData.name,
+            email: formData.email,
+            notes: formData.notes,
+            user_id: user.id, // Add user_id
+          },
+        ])
+        .select();
+
+      if (error) {
+        Alert.alert('Error', 'Failed to save contact: ' + error.message);
+        return;
+      }
+
+      Alert.alert('Success', 'Contact saved successfully!');
+      navigation.goBack();
+    } catch (error) {
+      Alert.alert('Error', 'An unexpected error occurred: ' + error.message);
+    }
   };
 
   return (
