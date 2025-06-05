@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -8,112 +8,228 @@ import {
   ScrollView,
   Switch,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSettings } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
+import { clearAuthState } from '../lib/supabase';
 
-export default function SettingsScreen({ navigation }) {
-  const [notifications, setNotifications] = React.useState(true);
-  const [darkMode, setDarkMode] = React.useState(false);
-  const [autoSave, setAutoSave] = React.useState(true);
+export default function SettingsScreen() {
+  const { settings, updateSettings } = useSettings();
+  const { user, signOut } = useAuth();
+  const [signingOut, setSigningOut] = useState(false);
 
-  const settingsOptions = [
-    {
-      section: 'Account',
-      items: [
-        { id: 'profile', icon: 'person', title: 'Edit Profile', action: 'navigate' },
-        { id: 'privacy', icon: 'shield-checkmark', title: 'Privacy Settings', action: 'navigate' },
-        { id: 'backup', icon: 'cloud-upload', title: 'Backup & Sync', action: 'navigate' },
-      ]
-    },
-    {
-      section: 'Preferences',
-      items: [
-        { id: 'notifications', icon: 'notifications', title: 'Notifications', action: 'toggle', value: notifications, setter: setNotifications },
-        { id: 'darkMode', icon: 'moon', title: 'Dark Mode', action: 'toggle', value: darkMode, setter: setDarkMode },
-        { id: 'autoSave', icon: 'save', title: 'Auto Save', action: 'toggle', value: autoSave, setter: setAutoSave },
-      ]
-    },
-    {
-      section: 'Support',
-      items: [
-        { id: 'help', icon: 'help-circle', title: 'Help & FAQ', action: 'navigate' },
-        { id: 'contact', icon: 'mail', title: 'Contact Support', action: 'navigate' },
-        { id: 'feedback', icon: 'chatbubble', title: 'Send Feedback', action: 'navigate' },
-      ]
-    },
-    {
-      section: 'About',
-      items: [
-        { id: 'version', icon: 'information-circle', title: 'App Version', subtitle: '1.0.0', action: 'none' },
-        { id: 'terms', icon: 'document-text', title: 'Terms of Service', action: 'navigate' },
-        { id: 'privacy-policy', icon: 'lock-closed', title: 'Privacy Policy', action: 'navigate' },
-      ]
-    }
-  ];
+  console.log('SettingsScreen - user:', user ? user.email : 'No user');
 
-  const handleSettingPress = (item) => {
-    switch (item.action) {
-      case 'navigate':
-        if (item.id === 'profile') {
-          navigation.navigate('CreateCard');
-        } else {
-          Alert.alert('Coming Soon', `${item.title} feature will be available soon.`);
-        }
-        break;
-      case 'toggle':
-        item.setter(!item.value);
-        break;
-      default:
-        break;
+  const handleToggle = (key, value) => {
+    updateSettings({ [key]: value });
+  };
+
+  const handleSignOut = async () => {
+    console.log('Sign out button pressed');
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Sign Out', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setSigningOut(true);
+              console.log('Calling signOut function...');
+              await signOut();
+              console.log('Sign out completed');
+            } catch (error) {
+              console.error('Sign out error:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            } finally {
+              setSigningOut(false);
+            }
+          }
+        },
+      ]
+    );
+  };
+
+  const handleDebugClearAuth = async () => {
+    try {
+      await clearAuthState();
+      Alert.alert('Debug', 'Auth state cleared');
+    } catch (error) {
+      console.error('Error clearing auth state:', error);
+      Alert.alert('Debug Error', 'Failed to clear auth state');
     }
   };
 
-  const renderSettingItem = (item) => (
-    <TouchableOpacity
-      key={item.id}
-      style={styles.settingItem}
-      onPress={() => handleSettingPress(item)}
-      disabled={item.action === 'none'}
-    >
-      <View style={styles.settingIcon}>
-        <Ionicons name={item.icon} size={20} color="#666" />
-      </View>
-      <View style={styles.settingContent}>
-        <Text style={styles.settingTitle}>{item.title}</Text>
-        {item.subtitle && (
-          <Text style={styles.settingSubtitle}>{item.subtitle}</Text>
-        )}
-      </View>
-      {item.action === 'toggle' ? (
-        <Switch
-          value={item.value}
-          onValueChange={item.setter}
-          trackColor={{ false: '#e0e0e0', true: '#000' }}
-          thumbColor="#fff"
-        />
-      ) : item.action === 'navigate' ? (
-        <Ionicons name="chevron-forward" size={20} color="#ccc" />
-      ) : null}
-    </TouchableOpacity>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+      <View style={styles.header}>
         <Text style={styles.title}>Settings</Text>
+      </View>
 
-        {settingsOptions.map((section) => (
-          <View key={section.section} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.section}</Text>
-            <View style={styles.sectionContent}>
-              {section.items.map(renderSettingItem)}
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Account Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          
+          <View style={styles.accountInfo}>
+            <View style={styles.avatarContainer}>
+              <Ionicons name="person-circle" size={60} color="#000" />
+            </View>
+            <View style={styles.userInfo}>
+              <Text style={styles.userName}>Signed in as:</Text>
+              <Text style={styles.userEmail}>{user?.email}</Text>
             </View>
           </View>
-        ))}
+        </View>
 
-        <TouchableOpacity style={styles.signOutButton}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
+        {/* App Settings Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>App Settings</Text>
+          
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="notifications-outline" size={24} color="#000" style={styles.settingIcon} />
+              <View style={styles.settingText}>
+                <Text style={styles.settingTitle}>Push Notifications</Text>
+                <Text style={styles.settingSubtitle}>Get notified when someone shares a card with you</Text>
+              </View>
+            </View>
+            <Switch
+              value={settings.notifications}
+              onValueChange={(value) => handleToggle('notifications', value)}
+              trackColor={{ false: '#e0e0e0', true: '#000' }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="eye-outline" size={24} color="#000" style={styles.settingIcon} />
+              <View style={styles.settingText}>
+                <Text style={styles.settingTitle}>Dark Mode</Text>
+                <Text style={styles.settingSubtitle}>Switch to dark theme</Text>
+              </View>
+            </View>
+            <Switch
+              value={settings.darkMode}
+              onValueChange={(value) => handleToggle('darkMode', value)}
+              trackColor={{ false: '#e0e0e0', true: '#000' }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          <View style={styles.settingItem}>
+            <View style={styles.settingInfo}>
+              <Ionicons name="shield-outline" size={24} color="#000" style={styles.settingIcon} />
+              <View style={styles.settingText}>
+                <Text style={styles.settingTitle}>Analytics</Text>
+                <Text style={styles.settingSubtitle}>Help improve the app by sharing usage data</Text>
+              </View>
+            </View>
+            <Switch
+              value={settings.analytics}
+              onValueChange={(value) => handleToggle('analytics', value)}
+              trackColor={{ false: '#e0e0e0', true: '#000' }}
+              thumbColor="#fff"
+            />
+          </View>
+        </View>
+
+        {/* Privacy & Security Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Privacy & Security</Text>
+          
+          <TouchableOpacity style={styles.menuItem}>
+            <View style={styles.menuItemContent}>
+              <Ionicons name="lock-closed-outline" size={24} color="#000" style={styles.menuIcon} />
+              <Text style={styles.menuItemText}>Change Password</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <View style={styles.menuItemContent}>
+              <Ionicons name="document-text-outline" size={24} color="#000" style={styles.menuIcon} />
+              <Text style={styles.menuItemText}>Privacy Policy</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <View style={styles.menuItemContent}>
+              <Ionicons name="document-outline" size={24} color="#000" style={styles.menuIcon} />
+              <Text style={styles.menuItemText}>Terms of Service</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Support Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Support</Text>
+          
+          <TouchableOpacity style={styles.menuItem}>
+            <View style={styles.menuItemContent}>
+              <Ionicons name="help-circle-outline" size={24} color="#000" style={styles.menuIcon} />
+              <Text style={styles.menuItemText}>Help Center</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <View style={styles.menuItemContent}>
+              <Ionicons name="mail-outline" size={24} color="#000" style={styles.menuIcon} />
+              <Text style={styles.menuItemText}>Contact Support</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.menuItem}>
+            <View style={styles.menuItemContent}>
+              <Ionicons name="star-outline" size={24} color="#000" style={styles.menuIcon} />
+              <Text style={styles.menuItemText}>Rate App</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#999" />
+          </TouchableOpacity>
+        </View>
+
+        {/* Sign Out Section */}
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={[styles.signOutButton, signingOut && styles.disabledButton]}
+            onPress={handleSignOut}
+            disabled={signingOut}
+          >
+            {signingOut ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <>
+                <Ionicons name="log-out-outline" size={24} color="#fff" />
+                <Text style={styles.signOutText}>Sign Out</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Debug Section - Remove in production */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Debug</Text>
+          <TouchableOpacity 
+            style={styles.debugButton}
+            onPress={handleDebugClearAuth}
+          >
+            <Text style={styles.debugButtonText}>Clear Auth State</Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>DropCard v1.0.0</Text>
+          <Text style={styles.footerSubtext}>Made with ❤️ for digital networking</Text>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -124,50 +240,80 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
+  header: {
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+  },
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#1a1a1a',
-    marginBottom: 32,
   },
   section: {
-    marginBottom: 32,
+    marginVertical: 16,
   },
   sectionTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '600',
-    color: '#666',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    color: '#1a1a1a',
+    marginBottom: 16,
   },
-  sectionContent: {
+  
+  // Account Section
+  accountInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#fff',
+    padding: 20,
     borderRadius: 12,
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
+  avatarContainer: {
+    marginRight: 16,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 4,
+  },
+  userEmail: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1a1a1a',
+  },
+
+  // Settings Items
   settingItem: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
     padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    marginBottom: 8,
+  },
+  settingInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   settingIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#f8f9fa',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
-  settingContent: {
+  settingText: {
     flex: 1,
   },
   settingTitle: {
@@ -180,19 +326,81 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
   },
-  signOutButton: {
-    height: 56,
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    justifyContent: 'center',
+
+  // Menu Items
+  menuItem: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 32,
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    padding: 16,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#ff4444',
+    borderColor: '#e0e0e0',
+    marginBottom: 8,
+  },
+  menuItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  menuIcon: {
+    marginRight: 16,
+  },
+  menuItemText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1a1a1a',
+  },
+
+  // Sign Out
+  signOutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF3B30',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  disabledButton: {
+    opacity: 0.6,
   },
   signOutText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#ff4444',
+    color: '#fff',
+  },
+
+  // Footer
+  footer: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  footerText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#666',
+    marginBottom: 4,
+  },
+  footerSubtext: {
+    fontSize: 12,
+    color: '#999',
+  },
+
+  // Debug Section
+  debugButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FF3B30',
+    padding: 16,
+    borderRadius: 12,
+    gap: 8,
+  },
+  debugButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
   },
 }); 
