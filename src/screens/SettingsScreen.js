@@ -88,7 +88,7 @@ export default function SettingsScreen({ navigation }) {
         <Switch
           value={item.value}
           onValueChange={item.setter}
-          trackColor={{ false: '#e0e0e0', true: '#007AFF' }}
+          trackColor={{ false: '#e0e0e0', true: '#000' }}
           thumbColor="#fff"
         />
       ) : item.action === 'navigate' ? (

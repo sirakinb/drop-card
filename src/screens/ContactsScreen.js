@@ -258,7 +258,7 @@ export default function ContactsScreen({ navigation }) {
     if (loading) {
       return (
         <View style={styles.emptyStateContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color="#000" />
           <Text style={styles.emptyStateText}>Loading contacts...</Text>
         </View>
       );
@@ -328,7 +328,7 @@ export default function ContactsScreen({ navigation }) {
           style={styles.filterButton}
           onPress={() => setShowFilters(true)}
         >
-          <Ionicons name="filter" size={18} color="#007AFF" />
+          <Ionicons name="filter" size={18} color="#000" />
           <Text style={styles.filterButtonText}>
             {activeTag ? `Tag: ${activeTag}` : 'Filter'}
           </Text>
@@ -338,7 +338,7 @@ export default function ContactsScreen({ navigation }) {
           style={styles.filterButton}
           onPress={() => setShowSortOptions(true)}
         >
-          <Ionicons name="swap-vertical" size={18} color="#007AFF" />
+          <Ionicons name="swap-vertical" size={18} color="#000" />
           <Text style={styles.filterButtonText}>
             {sortBy === 'name' ? 'Name' : sortBy === 'company' ? 'Company' : 'Date'}
           </Text>
@@ -350,7 +350,7 @@ export default function ContactsScreen({ navigation }) {
           <View style={styles.activeFilter}>
             <Text style={styles.activeFilterText}>{activeTag}</Text>
             <TouchableOpacity onPress={() => filterByTag('')}>
-              <Ionicons name="close-circle" size={16} color="#007AFF" />
+              <Ionicons name="close-circle" size={16} color="#000" />
             </TouchableOpacity>
           </View>
         </View>
@@ -384,8 +384,8 @@ export default function ContactsScreen({ navigation }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={['#007AFF']}
-              tintColor="#007AFF"
+              colors={['#000']}
+              tintColor="#000"
             />
           }
           showsVerticalScrollIndicator={false}
@@ -425,7 +425,7 @@ export default function ContactsScreen({ navigation }) {
                   activeTag === '' && styles.selectedTagOptionText
                 ]}>All Contacts</Text>
                 {activeTag === '' && (
-                  <Ionicons name="checkmark" size={20} color="#007AFF" />
+                  <Ionicons name="checkmark" size={20} color="#000" />
                 )}
               </TouchableOpacity>
               
@@ -445,7 +445,7 @@ export default function ContactsScreen({ navigation }) {
                       activeTag === item && styles.selectedTagOptionText
                     ]}>{item}</Text>
                     {activeTag === item && (
-                      <Ionicons name="checkmark" size={20} color="#007AFF" />
+                      <Ionicons name="checkmark" size={20} color="#000" />
                     )}
                   </TouchableOpacity>
                 )}
@@ -485,7 +485,7 @@ export default function ContactsScreen({ navigation }) {
               >
                 <Text style={styles.sortOptionText}>Name</Text>
                 {sortBy === 'name' && (
-                  <Ionicons name="checkmark" size={20} color="#007AFF" />
+                  <Ionicons name="checkmark" size={20} color="#000" />
                 )}
               </TouchableOpacity>
               
@@ -495,7 +495,7 @@ export default function ContactsScreen({ navigation }) {
               >
                 <Text style={styles.sortOptionText}>Company</Text>
                 {sortBy === 'company' && (
-                  <Ionicons name="checkmark" size={20} color="#007AFF" />
+                  <Ionicons name="checkmark" size={20} color="#000" />
                 )}
               </TouchableOpacity>
               
@@ -505,7 +505,7 @@ export default function ContactsScreen({ navigation }) {
               >
                 <Text style={styles.sortOptionText}>Date Added</Text>
                 {sortBy === 'date' && (
-                  <Ionicons name="checkmark" size={20} color="#007AFF" />
+                  <Ionicons name="checkmark" size={20} color="#000" />
                 )}
               </TouchableOpacity>
             </View>
@@ -539,7 +539,7 @@ export default function ContactsScreen({ navigation }) {
                       handleFollowUp(selectedContact);
                     }}
                   >
-                    <Ionicons name="chatbox-outline" size={22} color="#007AFF" />
+                    <Ionicons name="chatbox-outline" size={22} color="#000" />
                   </TouchableOpacity>
                   
                   <TouchableOpacity
@@ -685,7 +685,7 @@ export default function ContactsScreen({ navigation }) {
                       handleFollowUp(selectedContact);
                     }}
                   >
-                    <Ionicons name="chatbox-outline" size={20} color="#007AFF" />
+                    <Ionicons name="chatbox-outline" size={20} color="#000" />
                     <Text style={styles.detailsActionFullText}>
                       Create AI Follow-up
                     </Text>
@@ -698,7 +698,7 @@ export default function ContactsScreen({ navigation }) {
                       setShowContactDetails(false);
                     }}
                   >
-                    <Ionicons name="create-outline" size={20} color="#007AFF" />
+                    <Ionicons name="create-outline" size={20} color="#000" />
                     <Text style={styles.detailsActionFullText}>
                       Edit Contact
                     </Text>
@@ -751,7 +751,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#000',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -801,7 +801,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   filterButtonText: {
-    color: '#007AFF',
+    color: '#000',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -822,7 +822,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   activeFilterText: {
-    color: '#007AFF',
+    color: '#000',
     fontSize: 14,
   },
   contactCard: {
@@ -907,7 +907,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   followUpAction: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#000',
   },
   deleteAction: {
     backgroundColor: '#FF3B30',
@@ -938,10 +938,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   emptyStateButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
+    backgroundColor: '#000',
     paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 24,
+    marginTop: 16,
   },
   emptyStateButtonText: {
     color: '#fff',
@@ -989,7 +990,7 @@ const styles = StyleSheet.create({
     color: '#333',
   },
   selectedTagOptionText: {
-    color: '#007AFF',
+    color: '#000',
     fontWeight: '500',
   },
   emptyTagsText: {
@@ -1133,7 +1134,7 @@ const styles = StyleSheet.create({
   voiceNoteButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#007AFF',
+    backgroundColor: '#000',
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 24,
@@ -1157,7 +1158,7 @@ const styles = StyleSheet.create({
   },
   detailsActionFullText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: '#000',
   },
   deleteActionFull: {
     backgroundColor: '#FFF1F0',

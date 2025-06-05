@@ -16,7 +16,7 @@ import BusinessCard from '../components/BusinessCard';
 import QRGenerator from '../components/QRGenerator';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.9;
+const CARD_WIDTH = Math.min(width * 0.80, 320); // Match BusinessCard sizing
 
 export default function CardPreviewScreen({ navigation, route }) {
   const { currentCard, saveCard, loading } = useUserCard();
@@ -90,7 +90,7 @@ export default function CardPreviewScreen({ navigation, route }) {
   if (loading || !cardData) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#000" />
         <Text style={styles.loadingText}>Loading card...</Text>
       </SafeAreaView>
     );
@@ -110,13 +110,13 @@ export default function CardPreviewScreen({ navigation, route }) {
               style={styles.iconButton}
               onPress={handleEdit}
             >
-              <Ionicons name="pencil" size={22} color="#007AFF" />
+              <Ionicons name="pencil" size={22} color="#000" />
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.iconButton}
               onPress={handleShare}
             >
-              <Ionicons name="share-outline" size={22} color="#007AFF" />
+              <Ionicons name="share-outline" size={22} color="#000" />
             </TouchableOpacity>
           </View>
         </View>
@@ -182,7 +182,7 @@ export default function CardPreviewScreen({ navigation, route }) {
             <Ionicons 
               name={showQR ? "chevron-up" : "qr-code"} 
               size={24} 
-              color="#007AFF" 
+              color="#000" 
             />
             <Text style={styles.qrToggleText}>
               {showQR ? "Hide QR Code" : "Show QR Code"}
@@ -273,7 +273,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
   },
   selectedTemplate: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#000',
   },
   templateText: {
     fontSize: 14,
@@ -286,6 +286,7 @@ const styles = StyleSheet.create({
   cardPreviewContainer: {
     alignItems: 'center',
     marginBottom: 32,
+    marginHorizontal: 20,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -293,7 +294,6 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   cardPreview: {
-    width: CARD_WIDTH,
   },
   qrSection: {
     marginBottom: 32,
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
   qrToggleText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#007AFF',
+    color: '#000',
   },
   qrContainer: {
     alignItems: 'center',
@@ -332,7 +332,7 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   primaryButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#000',
     height: 56,
     borderRadius: 28,
     flexDirection: 'row',

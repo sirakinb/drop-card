@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
   saveButton: {
     flex: 1,
     height: 56,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#000',
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',

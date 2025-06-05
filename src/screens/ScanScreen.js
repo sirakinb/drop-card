@@ -10,10 +10,10 @@ import {
   Animated,
   Dimensions,
   Platform,
+  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { BarCodeScanner } from 'expo-barcode-scanner';
-import { Camera } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { useContacts } from '../context/AppContext';
 import { parseVCard } from '../utils/qrGenerator';
@@ -23,10 +23,10 @@ const SCAN_AREA_SIZE = width * 0.7;
 
 export default function ScanScreen({ navigation }) {
   // States for camera and scanning
-  const [hasPermission, setHasPermission] = useState(null);
+  const [permission, requestPermission] = useCameraPermissions();
   const [isScanning, setIsScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
-  const [flashMode, setFlashMode] = useState(Camera.Constants.FlashMode.off);
+  const [torchEnabled, setTorchEnabled] = useState(false);
   const [processingQR, setProcessingQR] = useState(false);
   
   // Animation values
@@ -35,14 +35,6 @@ export default function ScanScreen({ navigation }) {
   
   // Get contacts context for saving scanned contacts
   const { saveContact } = useContacts();
-  
-  // Request camera permissions on component mount
-  useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-  }, []);
   
   // Animate scan line when scanning is active
   useEffect(() => {
@@ -84,16 +76,14 @@ export default function ScanScreen({ navigation }) {
   
   // Toggle flash mode
   const toggleFlash = () => {
-    setFlashMode(
-      flashMode === Camera.Constants.FlashMode.off
-        ? Camera.Constants.FlashMode.torch
-        : Camera.Constants.FlashMode.off
-    );
+    setTorchEnabled(!torchEnabled);
   };
   
   // Navigate to manual entry
   const handleManualEntry = () => {
-    navigation.navigate('AddContact');
+    navigation.navigate('Contacts', { 
+      screen: 'AddContact' 
+    });
   };
   
   // Handle successful scan animation
@@ -211,30 +201,27 @@ export default function ScanScreen({ navigation }) {
   // Render different screens based on permission and scanning state
   const renderContent = () => {
     // Loading state while checking permissions
-    if (hasPermission === null) {
+    if (permission === null) {
       return (
         <View style={styles.centeredContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color="#000" />
           <Text style={styles.permissionText}>Checking camera permissions...</Text>
         </View>
       );
     }
     
     // Permission denied state
-    if (hasPermission === false) {
+    if (!permission.granted) {
       return (
         <View style={styles.centeredContainer}>
-          <Ionicons name="camera-off" size={64} color="#FF3B30" />
+          <Ionicons name="camera-outline" size={64} color="#FF3B30" />
           <Text style={styles.permissionTitle}>Camera Access Required</Text>
           <Text style={styles.permissionText}>
             Please allow camera access in your device settings to scan QR codes.
           </Text>
           <TouchableOpacity 
             style={styles.permissionButton}
-            onPress={async () => {
-              const { status } = await Camera.requestCameraPermissionsAsync();
-              setHasPermission(status === 'granted');
-            }}
+            onPress={requestPermission}
           >
             <Text style={styles.permissionButtonText}>Request Permission</Text>
           </TouchableOpacity>
@@ -246,13 +233,13 @@ export default function ScanScreen({ navigation }) {
     if (isScanning) {
       return (
         <View style={styles.cameraContainer}>
-          <Camera
+          <CameraView
             style={styles.camera}
-            type={Camera.Constants.Type.back}
-            flashMode={flashMode}
-            onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
-            barCodeScannerSettings={{
-              barCodeTypes: [BarCodeScanner.Constants.BarCodeType.qr],
+            facing="back"
+            enableTorch={torchEnabled}
+            onBarcodeScanned={scanned ? undefined : handleBarCodeScanned}
+            barcodeScannerSettings={{
+              barcodeTypes: ["qr"],
             }}
           >
             <SafeAreaView style={styles.cameraContent}>
@@ -269,7 +256,7 @@ export default function ScanScreen({ navigation }) {
                   onPress={toggleFlash}
                 >
                   <Ionicons 
-                    name={flashMode === Camera.Constants.FlashMode.torch ? "flash" : "flash-off"} 
+                    name={torchEnabled ? "flash" : "flash-off"} 
                     size={24} 
                     color="#fff" 
                   />
@@ -319,18 +306,20 @@ export default function ScanScreen({ navigation }) {
                 </Text>
               </View>
             </SafeAreaView>
-          </Camera>
+          </CameraView>
         </View>
       );
     }
     
     // Default state - not scanning yet
     return (
-      <View style={styles.content}>
-        <Text style={styles.title}>Scan Card</Text>
-        <Text style={styles.subtitle}>Point your camera at a QR code to scan a business card</Text>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        <View style={styles.headerSection}>
+          <Text style={styles.title}>Scan Card</Text>
+          <Text style={styles.subtitle}>Point your camera at a QR code to scan a business card</Text>
+        </View>
 
-        <View style={styles.scanArea}>
+        <View style={styles.scanAreaSection}>
           <View style={styles.scanFrame}>
             <View style={styles.scanPlaceholder}>
               <Ionicons name="qr-code-outline" size={64} color="#ccc" />
@@ -339,24 +328,26 @@ export default function ScanScreen({ navigation }) {
           </View>
         </View>
 
-        <TouchableOpacity 
-          style={styles.scanButton}
-          onPress={handleStartScan}
-        >
-          <Ionicons name="camera" size={24} color="#fff" />
-          <Text style={styles.scanButtonText}>Start Scanning</Text>
-        </TouchableOpacity>
+        <View style={styles.buttonsSection}>
+          <TouchableOpacity 
+            style={styles.scanButton}
+            onPress={handleStartScan}
+          >
+            <Ionicons name="camera" size={24} color="#fff" />
+            <Text style={styles.scanButtonText}>Start Scanning</Text>
+          </TouchableOpacity>
 
-        <View style={styles.divider}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>or</Text>
-          <View style={styles.dividerLine} />
+          <View style={styles.divider}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity style={styles.manualButton} onPress={handleManualEntry}>
+            <Ionicons name="person-add" size={20} color="#000" />
+            <Text style={styles.manualButtonText}>Add Contact Manually</Text>
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity style={styles.manualButton} onPress={handleManualEntry}>
-          <Ionicons name="person-add" size={20} color="#000" />
-          <Text style={styles.manualButtonText}>Add Contact Manually</Text>
-        </TouchableOpacity>
 
         <View style={styles.tips}>
           <Text style={styles.tipsTitle}>Tips for better scanning:</Text>
@@ -364,7 +355,7 @@ export default function ScanScreen({ navigation }) {
           <Text style={styles.tipText}>• Ensure good lighting</Text>
           <Text style={styles.tipText}>• Keep QR code within the frame</Text>
         </View>
-      </View>
+      </ScrollView>
     );
   };
   
@@ -383,30 +374,41 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 20,
   },
+  
+  // New styles for the scrollable content
+  headerSection: {
+    paddingTop: 20,
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  scanAreaSection: {
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  buttonsSection: {
+    marginBottom: 24,
+  },
+  
   title: {
     fontSize: 28,
     fontWeight: 'bold',
     color: '#1a1a1a',
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
     color: '#666',
-    marginBottom: 32,
     textAlign: 'center',
-  },
-  scanArea: {
-    alignItems: 'center',
-    marginBottom: 32,
+    lineHeight: 22,
   },
   scanFrame: {
-    width: 250,
-    height: 250,
+    width: 280,
+    height: 280,
     borderRadius: 20,
     borderWidth: 2,
-    borderColor: '#007AFF',
+    borderColor: '#000',
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
@@ -426,10 +428,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     height: 56,
-    backgroundColor: '#007AFF',
+    backgroundColor: '#000',
     borderRadius: 28,
     gap: 8,
-    marginBottom: 24,
+    marginBottom: 20,
   },
   scanButtonText: {
     color: '#fff',
@@ -439,7 +441,7 @@ const styles = StyleSheet.create({
   divider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
     gap: 16,
   },
   dividerLine: {
@@ -461,7 +463,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e0e0e0',
     gap: 8,
-    marginBottom: 32,
   },
   manualButtonText: {
     color: '#000',
@@ -471,7 +472,9 @@ const styles = StyleSheet.create({
   tips: {
     backgroundColor: '#fff',
     borderRadius: 12,
-    padding: 16,
+    padding: 20,
+    marginBottom: 32,
+    marginHorizontal: 4,
   },
   tipsTitle: {
     fontSize: 16,
@@ -482,7 +485,8 @@ const styles = StyleSheet.create({
   tipText: {
     fontSize: 14,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 6,
+    lineHeight: 20,
   },
   
   // Camera styles
@@ -526,7 +530,7 @@ const styles = StyleSheet.create({
   scanLine: {
     height: 2,
     width: '100%',
-    backgroundColor: '#007AFF',
+    backgroundColor: '#000',
   },
   scanText: {
     color: '#fff',
@@ -569,7 +573,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   permissionButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#000',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 24,

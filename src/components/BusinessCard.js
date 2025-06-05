@@ -11,7 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.9;
+const CARD_WIDTH = Math.min(width * 0.80, 320); // Further reduced percentage and max width
 const CARD_HEIGHT = CARD_WIDTH * 0.6; // Standard business card ratio
 
 /**
@@ -424,7 +424,7 @@ const styles = StyleSheet.create({
   },
   creativeContent: {
     flex: 1,
-    padding: 20,
+    padding: 12,
   },
   creativeHeader: {
     alignItems: 'center',
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   creativeContactText: {
-    fontSize: 13,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.9)',
     marginLeft: 8,
   },

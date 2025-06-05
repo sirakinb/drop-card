@@ -49,12 +49,6 @@
           "cameraPermission": "The app needs access to your camera to scan QR codes and business cards."
         }
       ],
-      [
-        "expo-barcode-scanner",
-        {
-          "cameraPermission": "The app needs access to your camera to scan QR codes of business cards."
-        }
-      ],
       "expo-dev-client"
     ],
     "extra": {

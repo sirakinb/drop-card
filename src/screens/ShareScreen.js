@@ -217,7 +217,7 @@ export default function ShareScreen({ navigation, route }) {
   if (!cardData) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+        <ActivityIndicator size="large" color="#000" />
         <Text style={styles.loadingText}>Loading card...</Text>
       </SafeAreaView>
     );
@@ -246,7 +246,7 @@ export default function ShareScreen({ navigation, route }) {
             <Ionicons 
               name="qr-code" 
               size={20} 
-              color={shareMethod === 'qr' ? '#007AFF' : '#666'} 
+              color={shareMethod === 'qr' ? '#000' : '#666'} 
             />
             <Text style={[
               styles.tabText,
@@ -264,7 +264,7 @@ export default function ShareScreen({ navigation, route }) {
             <Ionicons 
               name="card" 
               size={20} 
-              color={shareMethod === 'vcard' ? '#007AFF' : '#666'} 
+              color={shareMethod === 'vcard' ? '#000' : '#666'} 
             />
             <Text style={[
               styles.tabText,
@@ -282,7 +282,7 @@ export default function ShareScreen({ navigation, route }) {
             <Ionicons 
               name="text" 
               size={20} 
-              color={shareMethod === 'text' ? '#007AFF' : '#666'} 
+              color={shareMethod === 'text' ? '#000' : '#666'} 
             />
             <Text style={[
               styles.tabText,
@@ -300,7 +300,7 @@ export default function ShareScreen({ navigation, route }) {
             <Ionicons 
               name="link" 
               size={20} 
-              color={shareMethod === 'link' ? '#007AFF' : '#666'} 
+              color={shareMethod === 'link' ? '#000' : '#666'} 
             />
             <Text style={[
               styles.tabText,
@@ -363,7 +363,7 @@ export default function ShareScreen({ navigation, route }) {
               </Text>
               
               <View style={styles.vcardPreview}>
-                <Ionicons name="card" size={60} color="#007AFF" />
+                <Ionicons name="card" size={60} color="#000" />
                 <Text style={styles.vcardName}>{cardData.name}</Text>
                 <Text style={styles.vcardDetails}>
                   {cardData.title}{cardData.title && cardData.company ? ', ' : ''}
@@ -436,7 +436,7 @@ export default function ShareScreen({ navigation, route }) {
               </Text>
               
               <View style={styles.linkPreview}>
-                <Ionicons name="link" size={40} color="#007AFF" />
+                <Ionicons name="link" size={40} color="#000" />
                 <Text style={styles.linkText}>dropcard://{cardData.id}</Text>
               </View>
               
@@ -471,7 +471,7 @@ export default function ShareScreen({ navigation, route }) {
                 style={styles.socialButton}
                 onPress={() => shareViaSocial('AirDrop')}
               >
-                <View style={[styles.socialIcon, { backgroundColor: '#007AFF' }]}>
+                <View style={[styles.socialIcon, { backgroundColor: '#000' }]}>
                   <Ionicons name="share" size={22} color="#FFFFFF" />
                 </View>
                 <Text style={styles.socialText}>AirDrop</Text>
@@ -576,7 +576,7 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   activeTabText: {
-    color: '#007AFF',
+    color: '#000',
   },
   shareContent: {
     marginBottom: 32,
@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
   },
   linkText: {
     fontSize: 16,
-    color: '#007AFF',
+    color: '#000',
     marginTop: 16,
     textDecorationLine: 'underline',
   },
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   primaryButton: {
-    backgroundColor: '#007AFF',
+    backgroundColor: '#000',
     height: 56,
     borderRadius: 28,
     flexDirection: 'row',
