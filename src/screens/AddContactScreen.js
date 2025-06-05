@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Voice from '@react-native-community/voice';
 
 export default function AddContactScreen({ navigation }) {
   const [formData, setFormData] = useState({
@@ -17,7 +18,34 @@ export default function AddContactScreen({ navigation }) {
     email: '',
     notes: '',
   });
-  const [isRecording, setIsRecording] = useState(false);
+  // const [isRecording, setIsRecording] = useState(false); // Removed
+  const [isListening, setIsListening] = useState(false);
+  const [speechError, setSpeechError] = useState('');
+  const [recognizedTextForNote, setRecognizedTextForNote] = useState('');
+
+  useEffect(() => {
+    Voice.onSpeechStart = () => {
+      setIsListening(true);
+      setRecognizedTextForNote(''); // Clear previous recognized text
+    };
+    Voice.onSpeechEnd = () => {
+      setIsListening(false);
+      // Logic to append text is now primarily in toggleDictation after Voice.stop()
+    };
+    Voice.onSpeechError = (e) => {
+      setSpeechError(e.error?.message || JSON.stringify(e.error));
+      setIsListening(false); // Ensure listening stops on error
+    };
+    Voice.onSpeechResults = (e) => {
+      if (e.value && e.value.length > 0) {
+        setRecognizedTextForNote(e.value[0]);
+      }
+    };
+
+    return () => {
+      Voice.destroy().then(Voice.removeAllListeners);
+    };
+  }, []);
 
   const handleInputChange = (field, value) => {
     setFormData(prev => ({
@@ -26,13 +54,40 @@ export default function AddContactScreen({ navigation }) {
     }));
   };
 
-  const handleVoiceNote = () => {
-    setIsRecording(!isRecording);
-    // In a real app, this would start/stop voice recording
-    if (!isRecording) {
-      Alert.alert('Voice Recording', 'Voice recording started');
-    } else {
-      Alert.alert('Voice Recording', 'Voice recording stopped');
+  // const handleVoiceNote = () => { // Renamed and modified
+  //   setIsRecording(!isRecording);
+  //   // In a real app, this would start/stop voice recording
+  //   if (!isRecording) {
+  //     Alert.alert('Voice Recording', 'Voice recording started');
+  //   } else {
+  //     Alert.alert('Voice Recording', 'Voice recording stopped');
+  //   }
+  // };
+
+  const toggleDictation = async () => {
+    try {
+      if (isListening) {
+        await Voice.stop(); // This will trigger onSpeechEnd, then the logic below
+        setIsListening(false); // Explicitly set here too for safety
+        if (recognizedTextForNote.trim()) {
+          setFormData(prev => ({
+            ...prev,
+            notes: prev.notes ? prev.notes + ' ' + recognizedTextForNote.trim() : recognizedTextForNote.trim()
+          }));
+        }
+        setRecognizedTextForNote(''); // Reset for next session
+      } else {
+        // setPartialResults([]); // Not used anymore
+        setSpeechError('');
+        setRecognizedTextForNote(''); // Clear before starting a new session
+        await Voice.start('en-US');
+        // setIsListening(true); // onSpeechStart will set this
+      }
+    } catch (e) {
+      console.error("Error in toggleDictation: ", e);
+      setSpeechError(JSON.stringify(e));
+      setIsListening(false); // Ensure listening state is correct on error
+      setRecognizedTextForNote(''); // Clear any partial recognized text on error
     }
   };
 
@@ -97,20 +152,24 @@ export default function AddContactScreen({ navigation }) {
             />
           </View>
 
-          <TouchableOpacity 
-            style={[styles.voiceButton, isRecording && styles.voiceButtonActive]}
-            onPress={handleVoiceNote}
+          <TouchableOpacity
+            style={[styles.voiceButton, isListening && styles.voiceButtonActive]}
+            onPress={toggleDictation}
           >
-            <Ionicons 
-              name={isRecording ? "stop" : "mic"} 
-              size={20} 
-              color={isRecording ? "#fff" : "#000"} 
+            <Ionicons
+              name={isListening ? "stop" : "mic"}
+              size={20}
+              color={isListening ? "#fff" : "#000"}
             />
-            <Text style={[styles.voiceButtonText, isRecording && styles.voiceButtonTextActive]}>
-              {isRecording ? "Stop Recording" : "Add Voice Note"}
+            <Text style={[styles.voiceButtonText, isListening && styles.voiceButtonTextActive]}>
+              {isListening ? "Stop Dictation" : "Start Dictation"}
             </Text>
           </TouchableOpacity>
         </View>
+
+        {/* Temporary display for debugging - REMOVED */}
+        {/* <Text>Partial: {partialResults.join(' ')}</Text> */}
+        {/* <Text>Error: {speechError}</Text> */}
 
         <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
           <Text style={styles.saveButtonText}>Save Contact</Text>
